@@ -1,0 +1,20 @@
+# Environment
+.env
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Generated audio/logs
+recordings/*.wav
+responses/*.mp3
+responses/*.wav
+temp/*
+logs/*.log
+
+# Whisper model cache
+models/*
+
+# OS
+.DS_Store
+Thumbs.db

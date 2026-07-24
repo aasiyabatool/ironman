@@ -1,0 +1,26 @@
+# --- Environment ---
+python-dotenv==1.0.1
+
+# --- Gemini AI ---
+google-generativeai==0.8.3
+
+# --- Speech-to-Text ---
+#openai-whisper==20231117
+# Whisper depends on torch. If you don't already have it,
+# pip will install a CPU build automatically on most systems.
+
+# --- Text-to-Speech ---
+gTTS==2.5.1
+pyttsx3==2.90        # offline fallback engine
+
+# --- Audio Recording / Playback ---
+sounddevice==0.4.6
+#scipy==1.13.1
+playsound==1.2.2
+numpy==1.26.4
+
+# Notes:
+# - On Windows, playsound==1.2.2 is the most reliable version.
+# - On macOS, you may need: brew install portaudio  (before pip install sounddevice)
+# - On Linux, you may need: sudo apt install portaudio19-dev ffmpeg
+# - ffmpeg is required by Whisper for audio decoding on all platforms.
