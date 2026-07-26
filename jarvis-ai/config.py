@@ -9,18 +9,17 @@ is hardcoded in multiple places.
 import os
 from dotenv import load_dotenv
 
-
-load_dotenv(override=True)
+load_dotenv()
 
 # ----------------------------
 # API Keys
 # ----------------------------
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 # ----------------------------
 # Gemini Model Settings
 # ----------------------------
-GEMINI_MODEL = os.getenv("GEMINI_MODEL","gemini-3.1-flash-lite")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
 # ----------------------------
 # Whisper Settings
@@ -39,10 +38,10 @@ RECORD_SECONDS = int(os.getenv("RECORD_SECONDS", "5"))
 # ----------------------------
 # Text-to-Speech Settings
 # ----------------------------
-
-
-
+TTS_SLOW = False
+# "gtts" (online, natural) or "pyttsx3" (offline, robotic but no internet needed)
 TTS_ENGINE = os.getenv("TTS_ENGINE", "gtts")
+
 ASSISTANT_TITLE = os.getenv("ASSISTANT_TITLE", "Sir")  # "Sir" or "Ma'am"
 
 # Preferred voice gender when using pyttsx3 (has no effect on gTTS, which
@@ -54,9 +53,19 @@ TTS_VOICE_GENDER = os.getenv("TTS_VOICE_GENDER", "male")
 # (already a dependency for Whisper, so nothing extra to install).
 ROBOT_VOICE_EFFECT = os.getenv("ROBOT_VOICE_EFFECT", "true").lower() == "true"
 
-# Makes gTTS speak more slowly at the source (before any pitch effects).
-# Only affects the "gtts" engine.
-TTS_SLOW = os.getenv("TTS_SLOW", "true").lower() == "true"
+# ----------------------------
+# Wake Word Settings (openWakeWord)
+# ----------------------------
+# openWakeWord is fully local and free -- no account or API key
+# needed. Its pretrained model listens for the phrase "Hey Jarvis"
+# specifically (bare "Jarvis" may also trigger it, but less reliably).
+#
+# WAKE_WORD_THRESHOLD is a score from 0-1: how confident the model
+# needs to be before triggering. Lower = more sensitive (may
+# false-trigger more often); higher = stricter (may miss you
+# occasionally). 0.5 is openWakeWord's own recommended default.
+WAKE_WORD_THRESHOLD = float(os.getenv("WAKE_WORD_THRESHOLD", "0.5"))
+
 # ----------------------------
 # File Paths
 # ----------------------------

@@ -1,26 +1,33 @@
 """
 main.py
 --------
-Entry point for the Phase 1 JARVIS software prototype.
+Entry point for JARVIS -- now wake-word activated instead of
+Enter-key activated.
 
 Pipeline:
 
-    Record audio (laptop mic)
-        -> Whisper speech-to-text
-            -> Command parser
-                -> Helmet command?  --yes--> Simulator prints action
-                        |no
-                        v
-                    Gemini generates a reply
-                        -> Text-to-speech
-                            -> Play through laptop speakers
+    Listen continuously for "Jarvis" (Porcupine)
+        -> Record the command that follows
+            -> Whisper speech-to-text
+                -> Command parser
+                    -> Helmet command?  --yes--> Simulator prints action
+                            |no
+                            v
+                        Gemini generates a reply
+                            -> Text-to-speech
+                                -> Play through speakers
 
 Every interaction is logged to logs/YYYY-MM-DD.log
+
+Note: if you don't have Porcupine set up yet (or just want the old
+keyboard-driven flow for quick testing), python test_text_mode.py
+is unaffected by any of this -- it never used the microphone at all.
 """
 
 import sys
 
 from config import RECORD_SECONDS, VOICE_INPUT_PATH, RESPONSES_DIR
+from wakeword.listener import listen_for_wake_word
 from audio.recorder import record, record_until_enter
 from audio.player import play
 from audio.audio_utils import unique_response_path
@@ -34,9 +41,9 @@ from commands.helmet_commands import NONE
 
 
 def run_once(use_enter_to_stop: bool = False) -> None:
-    """Runs a single record -> think -> respond cycle."""
+    """Runs a single record -> think -> respond cycle, after the wake word fires."""
 
-    # 1. Record user speech
+    # 1. Record the command that follows the wake word
     if use_enter_to_stop:
         audio_path = record_until_enter(VOICE_INPUT_PATH)
     else:
@@ -46,7 +53,7 @@ def run_once(use_enter_to_stop: bool = False) -> None:
     text = transcribe(audio_path)
 
     if not text:
-        print("[Main] No speech detected. Try again.")
+        print("[Main] No speech detected. Say the wake word to try again.")
         return
 
     # 3. Check for a helmet command first (fast path, no API call)
@@ -57,7 +64,6 @@ def run_once(use_enter_to_stop: bool = False) -> None:
         response_text = execute_command(command)
         print(f"JARVIS: {response_text}")
         log_interaction(text, command, response_text)
-        # Command confirmations are also spoken, for a consistent feel
         audio_reply = synthesize(response_text, unique_response_path(RESPONSES_DIR))
         play(audio_reply)
 
@@ -74,15 +80,17 @@ def run_once(use_enter_to_stop: bool = False) -> None:
 
 def main() -> None:
     print("=" * 50)
-    print(" JARVIS AI Assistant — Phase 1 (Software Prototype)")
+    print(" JARVIS AI Assistant — Wake-Word Activated")
     print("=" * 50)
-    print("Press Ctrl+C at any time to exit.\n")
+    print("Say 'Hey Jarvis' at any time to start a command.")
+    print("Press Ctrl+C to exit.\n")
 
     use_enter_mode = "--enter" in sys.argv
 
     while True:
         try:
-            input("\nPress Enter, then speak...")
+            listen_for_wake_word()
+            print("[Main] Listening for your command...")
             run_once(use_enter_to_stop=use_enter_mode)
         except KeyboardInterrupt:
             print("\n[Main] Shutting down JARVIS. Goodbye.")

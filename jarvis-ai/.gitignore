@@ -14,6 +14,13 @@ logs/*.log
 
 # Whisper model cache
 models/*
+!models/.gitkeep
+
+# Face recognition data — biometric photos and trained model should
+# never be committed to a repo, especially a public/shared one.
+training_faces/
+models/face_model.yml
+models/face_labels.json
 
 # OS
 .DS_Store

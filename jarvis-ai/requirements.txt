@@ -5,7 +5,7 @@ python-dotenv==1.0.1
 google-generativeai==0.8.3
 
 # --- Speech-to-Text ---
-#openai-whisper==20231117
+openai-whisper==20231117
 # Whisper depends on torch. If you don't already have it,
 # pip will install a CPU build automatically on most systems.
 
@@ -15,9 +15,24 @@ pyttsx3==2.90        # offline fallback engine
 
 # --- Audio Recording / Playback ---
 sounddevice==0.4.6
-#scipy==1.13.1
+scipy==1.13.1
 playsound==1.2.2
 numpy==1.26.4
+
+# --- Face Recognition (vision/ module) ---
+opencv-contrib-python==4.10.0.84
+# Note: must be opencv-contrib-python, not plain opencv-python --
+# the "contrib" build is the one that includes cv2.face (LBPH
+# recognizer). If you already have plain opencv-python installed,
+# uninstall it first to avoid a conflicting cv2 install:
+#   pip uninstall opencv-python
+#   pip install opencv-contrib-python
+
+# --- Wake Word Detection (wakeword/ module) ---
+openwakeword
+onnxruntime
+# No account/API key needed -- fully local and open-source.
+# Uses sounddevice (already listed above) for microphone capture.
 
 # Notes:
 # - On Windows, playsound==1.2.2 is the most reliable version.
