@@ -12,6 +12,8 @@ OPEN_HELMET = "OPEN_HELMET"
 CLOSE_HELMET = "CLOSE_HELMET"
 LIGHTS_ON = "LIGHTS_ON"
 LIGHTS_OFF = "LIGHTS_OFF"
+COMBAT_MODE = "COMBAT_MODE"
+PARTY_MODE = "PARTY_MODE"
 NONE = "NONE"
 
 # Each command maps to a list of trigger phrases (all lowercase).
@@ -52,6 +54,16 @@ COMMAND_PHRASES = {
         "turn the lights off",
         "eyes off",
     ],
+    COMBAT_MODE: [
+        "combat mode",
+        "activate combat mode",
+        "engage combat mode",
+    ],
+    PARTY_MODE: [
+        "party mode",
+        "activate party mode",
+        "start party mode",
+    ],
 }
 
 # Friendly confirmation messages returned by the simulator/ESP32
@@ -61,4 +73,6 @@ COMMAND_RESPONSES = {
     CLOSE_HELMET: "Closing helmet.",
     LIGHTS_ON: "Lights on.",
     LIGHTS_OFF: "Lights off.",
+    COMBAT_MODE: "Combat mode engaged.",
+    PARTY_MODE: "Let's have some fun.",
 }
