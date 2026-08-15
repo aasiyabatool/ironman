@@ -49,7 +49,7 @@ def ask(text: str) -> str:
     """
     chat = _get_chat_session()
     print("[Gemini] Thinking...")
-    response = chat.send_message(text)
+    response = chat.send_message(text, generation_config={"max_output_tokens": 120})
     reply = response.text.strip()
     print(f"[Gemini] Reply: \"{reply}\"")
     return reply

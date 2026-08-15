@@ -23,7 +23,7 @@ def _get_model() -> WhisperModel:
     global _model
     if _model is None:
         print(f"[STT] Loading faster-whisper model '{WHISPER_MODEL_SIZE}'...")
-        _model = WhisperModel(WHISPER_MODEL_SIZE, device="cpu", compute_type="int8")
+        _model = WhisperModel(WHISPER_MODEL_SIZE, device="cpu", compute_type="int8", cpu_threads=4)
     return _model
 
 
@@ -50,7 +50,7 @@ def transcribe(audio_path: str) -> str:
     """
     model = _get_model()
     print("[STT] Transcribing...")
-    segments, _info = model.transcribe(audio_path, beam_size=1)
+    segments, _info = model.transcribe(audio_path, beam_size=1, condition_on_previous_text=False)
     text = "".join(segment.text for segment in segments).strip()
     print(f"[STT] Recognized: \"{text}\"")
     return text

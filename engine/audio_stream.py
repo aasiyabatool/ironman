@@ -170,6 +170,15 @@ def run(state: SharedState) -> None:
 
                 command_path = _capture_command(stream)
 
+                # Drop any stale queued command(s) so JARVIS always
+                # responds to what you just said, not a growing
+                # backlog from earlier in the conversation.
+                while not state.command_queue.empty():
+                    try:
+                        state.command_queue.get_nowait()
+                    except Exception:
+                        break
+
                 state.command_queue.put(command_path)
                 queue_depth = state.command_queue.qsize()
                 if queue_depth > 0:
