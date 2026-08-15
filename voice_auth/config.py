@@ -40,3 +40,31 @@ VOICE_AUTH_ENABLED = os.getenv("VOICE_AUTH_ENABLED", "false").lower() == "true"
 os.makedirs(TRAINING_DATA_DIR, exist_ok=True)
 os.makedirs(UNKNOWN_DIR, exist_ok=True)
 os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+
+# --- Embedding-based verification (voice_auth/embeddings.py +
+# build_voiceprints.py + embedding_verify.py) -- an alternative to
+# the MFCC+SVM pipeline above. Uses a pretrained speaker-embedding
+# model (resemblyzer) instead of training a classifier from scratch,
+# and compares via cosine similarity instead of predicted class
+# probability. See the module docstrings for details.
+VOICEPRINTS_PATH = os.path.join(BASE_DIR, "models", "voiceprints.pkl")
+
+# Cosine similarity threshold for embedding-based verification.
+# Similarity ranges roughly 0-1 for resemblyzer embeddings.
+# 0.75-0.80 is a reasonable starting point; tune using real
+# genuine-pair vs. impostor-pair comparisons on your own voice data.
+EMBEDDING_THRESHOLD = float(os.getenv("EMBEDDING_THRESHOLD", "0.78"))
+
+# --- Embedding-based verification (voice_auth/embeddings.py +
+# build_voiceprints.py + embedding_verify.py) -- an alternative to
+# the MFCC+SVM pipeline above. Uses a pretrained speaker-embedding
+# model (resemblyzer) instead of training a classifier from scratch,
+# and compares via cosine similarity instead of predicted class
+# probability. See the module docstrings for details.
+VOICEPRINTS_PATH = os.path.join(BASE_DIR, "models", "voiceprints.pkl")
+
+# Cosine similarity threshold for embedding-based verification.
+# Similarity ranges roughly 0-1 for resemblyzer embeddings.
+# 0.75-0.80 is a reasonable starting point; tune using real
+# genuine-pair vs. impostor-pair comparisons on your own voice data.
+EMBEDDING_THRESHOLD = float(os.getenv("EMBEDDING_THRESHOLD", "0.78"))

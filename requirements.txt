@@ -55,3 +55,7 @@ onnxruntime
 # - ffmpeg is required by Whisper for audio decoding on all platforms,
 #   AND is used directly by engine/player_control.py to boost playback
 #   volume before it's sent to the speaker.
+
+# --- Voice Authentication (voice_auth/ module) ---
+scikit-learn   # multi-class SVM speaker identification
+librosa        # MFCC feature extraction from voice clips
