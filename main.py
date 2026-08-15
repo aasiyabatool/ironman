@@ -5,9 +5,27 @@ Entry point for JARVIS -- wake-word activated, with true barge-in.
 
 Combat Mode and Party Mode are persistent LED states -- see the
 PERSISTENT_LED_COMMANDS note in run_once() below.
+
+Voice authentication flow: on boot, JARVIS explicitly announces it's
+waiting for authentication and waits for a "Hey Jarvis" + speech
+clip. That FIRST clip is used ONLY to verify the speaker (see
+voice_auth/embedding_verify.py) -- it is never transcribed or acted
+on as a command. If it passes, the session is trusted for the rest
+of the run and JARVIS drops into normal wake-word command handling.
+If it fails, JARVIS speaks a refusal and shuts the whole system down.
+
+NOTE: torch (pulled in by voice_auth -> resemblyzer) must be imported
+BEFORE onnxruntime (pulled in by ai.speech_to_text) -- both ship their
+own BLAS build on aarch64, and whichever loads first wins the process-
+wide symbol table. Importing torch second causes an
+"undefined symbol: sbgemm_" crash. Do not reorder these imports.
 """
 
 import threading
+
+# Must come before ai.speech_to_text (onnxruntime) -- see note above.
+from voice_auth.config import VOICE_AUTH_ENABLED
+from voice_auth.embedding_verify import is_authorized
 
 from config import RESPONSES_DIR
 from engine.state import SharedState
@@ -23,9 +41,6 @@ from commands.parser import detect_command
 from commands.simulator import execute_command
 from commands.helmet_commands import NONE, COMBAT_MODE, PARTY_MODE
 from commands.status_led import set_status
-from voice_auth.embedding_verify import is_authorized
-from voice_auth.config import VOICE_AUTH_ENABLED
-from voice_auth.verify import is_authorized
 
 # Commands that intentionally leave the LEDs in a persistent state --
 # the automatic "back to ready" status update is skipped for these,
@@ -38,17 +53,58 @@ PERSISTENT_LED_COMMANDS = {COMBAT_MODE, PARTY_MODE}
 AUTHORIZED_NAMES = ["aasiya"]
 
 
+def authenticate_session(state: SharedState) -> bool:
+    """
+    Speaks an explicit auth prompt, then blocks until the first
+    wake-word-triggered clip arrives and checks it against the
+    enrolled voiceprint(s). Returns True if authorized.
+
+    This clip is consumed here and ONLY here -- it is never passed
+    to transcribe()/detect_command(), so saying "Hey Jarvis, turn on
+    the lights" as your very first utterance authenticates you but
+    does not also execute "turn on the lights" as a side effect.
+    """
+    set_status("listening")
+    prompt = "Awaiting voice authentication. Say Hey Jarvis to authenticate."
+    print(f"JARVIS: {prompt}")
+    audio_reply = synthesize(prompt, unique_response_path(RESPONSES_DIR))
+    play_interruptible(audio_reply, state)
+
+    print("[Main] Waiting for wake word + speech to authenticate...")
+    audio_path = state.command_queue.get()  # blocks until wake word + clip arrive
+    state.interrupt_requested.clear()
+
+    authorized, matched_name, similarity = is_authorized(
+        audio_path, authorized_names=AUTHORIZED_NAMES
+    )
+    print(
+        f"[VoiceAuth] closest match: {matched_name} "
+        f"(similarity: {similarity:.2f}) -> "
+        f"{'AUTHORIZED' if authorized else 'REJECTED'}"
+    )
+
+    if authorized:
+        greeting = f"Welcome back, {matched_name}."
+        print(f"JARVIS: {greeting}")
+        log_interaction("[auth clip]", "AUTH_SUCCESS", greeting)
+        audio_reply = synthesize(greeting, unique_response_path(RESPONSES_DIR))
+        play_interruptible(audio_reply, state)
+        set_status("ready")
+        return True
+
+    refusal = "You are not authorized. Shutting down."
+    print(f"JARVIS: {refusal}")
+    log_interaction("[auth clip]", "AUTH_REJECTED_SHUTDOWN", refusal)
+    audio_reply = synthesize(refusal, unique_response_path(RESPONSES_DIR))
+    play_interruptible(audio_reply, state)
+    set_status("error")
+    return False
+
+
 def run_once(state: SharedState, audio_path: str) -> None:
     """Processes one already-captured command recording."""
 
     set_status("processing")
-
-    authorized, matched_name, similarity = is_authorized(audio_path, AUTHORIZED_NAMES)
-    if not authorized:
-        print(f"[Main] Voice not authorized (closest match: {matched_name}, "
-              f"similarity: {similarity:.2f}). Ignoring command.")
-        set_status("error")
-        return
 
     try:
         text = transcribe(audio_path)
@@ -59,19 +115,6 @@ def run_once(state: SharedState, audio_path: str) -> None:
             return
 
         command = detect_command(text)
-
-        if command != NONE and VOICE_AUTH_ENABLED:
-            authorized, speaker, confidence = is_authorized(audio_path)
-            if not authorized:
-                print(f"[VoiceAuth] Rejected -- closest match '{speaker}' ({confidence:.0%}).")
-                response_text = "I don't recognize your voice, so I can't do that."
-                print(f"JARVIS: {response_text}")
-                log_interaction(text, f"{command}_DENIED", response_text)
-                audio_reply = synthesize(response_text, unique_response_path(RESPONSES_DIR))
-                play_interruptible(audio_reply, state)
-                set_status("ready")
-                return
-            print(f"[VoiceAuth] Authorized -- identified as '{speaker}' ({confidence:.0%}).")
 
         if command != NONE:
             response_text = execute_command(command)
@@ -113,6 +156,14 @@ def main() -> None:
         target=audio_stream.run, args=(state,), daemon=True
     )
     listener_thread.start()
+
+    if VOICE_AUTH_ENABLED:
+        authorized = authenticate_session(state)
+        if not authorized:
+            state.shutdown_requested.set()
+            return
+    else:
+        print("[Main] Voice authentication DISABLED (set VOICE_AUTH_ENABLED=true to turn on).\n")
 
     try:
         while True:

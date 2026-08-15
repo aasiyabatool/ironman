@@ -51,20 +51,8 @@ VOICEPRINTS_PATH = os.path.join(BASE_DIR, "models", "voiceprints.pkl")
 
 # Cosine similarity threshold for embedding-based verification.
 # Similarity ranges roughly 0-1 for resemblyzer embeddings.
-# 0.75-0.80 is a reasonable starting point; tune using real
-# genuine-pair vs. impostor-pair comparisons on your own voice data.
-EMBEDDING_THRESHOLD = float(os.getenv("EMBEDDING_THRESHOLD", "0.78"))
-
-# --- Embedding-based verification (voice_auth/embeddings.py +
-# build_voiceprints.py + embedding_verify.py) -- an alternative to
-# the MFCC+SVM pipeline above. Uses a pretrained speaker-embedding
-# model (resemblyzer) instead of training a classifier from scratch,
-# and compares via cosine similarity instead of predicted class
-# probability. See the module docstrings for details.
-VOICEPRINTS_PATH = os.path.join(BASE_DIR, "models", "voiceprints.pkl")
-
-# Cosine similarity threshold for embedding-based verification.
-# Similarity ranges roughly 0-1 for resemblyzer embeddings.
-# 0.75-0.80 is a reasonable starting point; tune using real
-# genuine-pair vs. impostor-pair comparisons on your own voice data.
-EMBEDDING_THRESHOLD = float(os.getenv("EMBEDDING_THRESHOLD", "0.78"))
+# Lowered from the 0.78 default after live testing on the actual
+# mic/room setup showed genuine attempts clustering around 0.53-0.76 --
+# re-tune further once you have real impostor-attempt scores to
+# compare against.
+EMBEDDING_THRESHOLD = float(os.getenv("EMBEDDING_THRESHOLD", "0.60"))
