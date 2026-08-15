@@ -13,3 +13,6 @@ training_faces/
 voice_auth_data/
 piper/
 *.tar.gz
+*.bak
+*.bak2
+test_raw.wav
