@@ -1,0 +1,57 @@
+# --- Environment ---
+python-dotenv==1.0.1
+
+# --- Gemini AI ---
+google-generativeai==0.8.3
+
+# --- Speech-to-Text ---
+faster-whisper==1.0.3
+# CTranslate2-based reimplementation of Whisper -- 2-4x faster than
+# openai-whisper on CPU-only ARM64 (the Pi), with no torch/CUDA
+# dependency to fight with. compute_type="int8" (set in
+# ai/speech_to_text.py) keeps memory + latency low for short commands.
+
+# --- Text-to-Speech ---
+gTTS==2.5.1           # online, requires network -- NOT the default on the Pi
+pyttsx3==2.90         # offline, default TTS engine on the Pi (see config.py TTS_ENGINE)
+
+# --- Audio Recording / Playback ---
+sounddevice==0.4.6
+# scipy is intentionally NOT listed here -- on the Pi it's installed
+# system-wide via: sudo apt install -y python3-scipy
+# (compiling it from source with pip is extremely slow on a Pi and
+# needs gfortran/openblas/lapack dev headers). The venv must be
+# created with --system-site-packages so it can see the system
+# scipy install. See SETUP.md.
+playsound==1.2.2
+numpy==1.26.4
+webrtcvad==2.0.10   # VAD auto-stop on silence; needs a C compiler at install time
+                    # (build-essential/python3-dev on the Pi) since it has no wheel for ARM64
+
+# --- Face Recognition (vision/ module) ---
+opencv-contrib-python==4.10.0.84
+# Note: must be opencv-contrib-python, not plain opencv-python --
+# the "contrib" build is the one that includes cv2.face (LBPH
+# recognizer). If you already have plain opencv-python installed,
+# uninstall it first to avoid a conflicting cv2 install:
+#   pip uninstall opencv-python
+#   pip install opencv-contrib-python
+
+# --- Wake Word Detection (wakeword/ module) ---
+# Pin to 0.6.0 specifically -- pip's resolver silently downgrades to
+# an older 0.4.0 (which is missing openwakeword.utils.download_models
+# and will crash on first run) if you just do a plain
+# `pip install openwakeword`. Install with --no-deps to force the
+# version and avoid it re-resolving other packages. See SETUP.md.
+openwakeword==0.6.0
+onnxruntime
+# No account/API key needed -- fully local and open-source.
+# Uses sounddevice (already listed above) for microphone capture.
+
+# Notes:
+# - On Windows, playsound==1.2.2 is the most reliable version.
+# - On macOS, you may need: brew install portaudio  (before pip install sounddevice)
+# - On the Pi/Linux, you need: sudo apt install -y portaudio19-dev ffmpeg
+# - ffmpeg is required by Whisper for audio decoding on all platforms,
+#   AND is used directly by engine/player_control.py to boost playback
+#   volume before it's sent to the speaker.

@@ -1,0 +1,15 @@
+.env
+venv/
+venv_backup.tar.gz
+__pycache__/
+*.pyc
+recordings/*.wav
+responses/*.mp3
+responses/*.wav
+temp/*
+logs/*.log
+models/*
+training_faces/
+voice_auth_data/
+piper/
+*.tar.gz
