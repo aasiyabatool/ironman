@@ -20,6 +20,21 @@ class SharedState:
         # its turn instead of silently getting overwritten/dropped.
         self.command_queue = queue.Queue()
 
+        # Set (True) until voice authentication succeeds. While set,
+        # the audio thread does NOT record any trailing speech after
+        # the wake word -- it just snapshots the rolling buffer that
+        # already contains the "Hey Jarvis" utterance itself and
+        # queues that for auth. Cleared by main.py once authentication
+        # passes, after which the audio thread goes back to capturing
+        # normal trailing commands.
+        self.auth_mode = threading.Event()
+        self.auth_mode.set()
+
+        # Queue of captured auth-clip .wav paths (wake word phrase
+        # only), filled by the audio thread while auth_mode is set
+        # and drained by main.py's authenticate_session().
+        self.auth_queue = queue.Queue()
+
         # Set by the audio thread the instant a NEW wake word is heard,
         # so any currently-playing response stops immediately (barge-in).
         self.interrupt_requested = threading.Event()

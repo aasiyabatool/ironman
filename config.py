@@ -28,6 +28,14 @@ TTS_SLOW = os.getenv("TTS_SLOW", "false").lower() == "true"
 # Optimized Record Window (used as a fallback / by the fixed-length recorder)
 RECORD_SECONDS = int(os.getenv("RECORD_SECONDS", "5"))
 
+# How many trailing seconds of audio to snapshot for voice authentication
+# when the wake word fires. This is a ROLLING buffer of what was just
+# heard leading up to and including "Hey Jarvis" itself -- NOT audio
+# recorded after the wake word. The user should say only "Hey Jarvis"
+# and nothing else during authentication; that phrase alone is what
+# gets analyzed.
+AUTH_CLIP_SECONDS = float(os.getenv("AUTH_CLIP_SECONDS", "2.0"))
+
 # Voice Activity Detection (auto-stop recording on silence)
 USE_VAD_CAPTURE = os.getenv("USE_VAD_CAPTURE", "true").lower() == "true"
 VAD_AGGRESSIVENESS = int(os.getenv("VAD_AGGRESSIVENESS", "2"))  # 0-3, higher = more aggressive filtering of non-speech

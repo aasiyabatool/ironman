@@ -34,7 +34,7 @@ import time
 
 from engine.state import SharedState
 
-VOLUME_MULTIPLIER = 40.0  # raise/lower to taste; watch for distortion above ~50-60
+VOLUME_MULTIPLIER = 30.0  # raise/lower to taste; watch for distortion above ~50-60
 
 # TTS synthesis can occasionally finish "late" -- e.g. the caller hands
 # us a path the instant engine.runAndWait() returns, but the OS hasn't

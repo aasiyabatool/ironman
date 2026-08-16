@@ -35,7 +35,7 @@ N_MFCC = 13           # number of MFCC coefficients to extract
 VOICE_AUTH_THRESHOLD = float(os.getenv("VOICE_AUTH_THRESHOLD", "0.75"))
 
 # Master on/off switch for wiring this into the live pipeline later.
-VOICE_AUTH_ENABLED = os.getenv("VOICE_AUTH_ENABLED", "false").lower() == "true"
+VOICE_AUTH_ENABLED = os.getenv("VOICE_AUTH_ENABLED", "true").lower() == "true"
 
 os.makedirs(TRAINING_DATA_DIR, exist_ok=True)
 os.makedirs(UNKNOWN_DIR, exist_ok=True)

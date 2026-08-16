@@ -8,6 +8,7 @@ Owns the ONE continuous microphone stream for the whole assistant.
 
 import os
 import time
+from collections import deque
 
 import numpy as np
 import onnxruntime as ort
@@ -34,6 +35,7 @@ from config import (
     VAD_SILENCE_SECONDS,
     VAD_MIN_RECORD_SECONDS,
     VAD_MAX_RECORD_SECONDS,
+    AUTH_CLIP_SECONDS,
 )
 from engine.state import SharedState
 from commands.status_led import set_status
@@ -41,6 +43,12 @@ from commands.status_led import set_status
 SAMPLE_RATE = 16000
 CHUNK_SIZE = 1280  # ~80ms per chunk, the size openWakeWord expects
 WARMUP_CHUNKS = 19  # ~1.5s, flushes stale buffers
+
+# How many CHUNK_SIZE chunks make up the rolling auth buffer -- e.g.
+# 2.0s / 80ms ~= 25 chunks. This buffer is what gets snapshotted for
+# voice authentication the instant "Hey Jarvis" fires, so it holds
+# the wake-word phrase itself rather than anything said afterward.
+AUTH_CLIP_CHUNKS = max(1, int((SAMPLE_RATE * AUTH_CLIP_SECONDS) / CHUNK_SIZE))
 
 
 def _load_model() -> Model:
@@ -130,6 +138,21 @@ def _capture_command(stream) -> str:
     return _capture_command_fixed(stream)
 
 
+def _save_auth_clip(rolling_buffer: "deque") -> str:
+    """
+    Snapshots the rolling buffer (the last AUTH_CLIP_SECONDS of raw
+    audio, which already contains the "Hey Jarvis" phrase that just
+    triggered detection) and saves it as the auth clip. No extra
+    speech is recorded -- the wake word IS the auth sample.
+    """
+    frames = list(rolling_buffer)
+    audio = np.concatenate(frames, axis=0)
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    path = os.path.join(RECORDINGS_DIR, f"auth_{timestamp}.wav")
+    wav_write(path, SAMPLE_RATE, audio)
+    return path
+
+
 def run(state: SharedState) -> None:
     """
     The background thread's main loop. Runs until
@@ -148,8 +171,17 @@ def run(state: SharedState) -> None:
         print("[AudioStream] Listening for 'Hey Jarvis'...")
         set_status("ready")  # idle, waiting for the wake word
 
+        # Rolling buffer of the last AUTH_CLIP_SECONDS of raw audio.
+        # Continuously overwritten chunk by chunk so that whenever the
+        # wake word fires, it already holds the "Hey Jarvis" phrase
+        # itself -- this is what auth mode snapshots, instead of
+        # recording anything the user says afterward.
+        rolling_buffer = deque(maxlen=AUTH_CLIP_CHUNKS)
+
         while not state.shutdown_requested.is_set():
             chunk, _ = stream.read(CHUNK_SIZE)
+            rolling_buffer.append(chunk.copy())
+
             predictions = model.predict(chunk.flatten())
 
             active_threshold = (
@@ -164,28 +196,47 @@ def run(state: SharedState) -> None:
                 print("[AudioStream] Wake word detected!")
                 model.reset()
 
-                set_status("listening")  # wake word heard, now recording
-
                 state.interrupt_requested.set()
 
-                command_path = _capture_command(stream)
+                if state.auth_mode.is_set():
+                    # Voice-auth stage: the wake word IS the sample.
+                    # Snapshot the rolling buffer right now -- do NOT
+                    # record anything further -- and hand it off for
+                    # speaker verification.
+                    set_status("processing")
+                    print("[AudioStream] Capturing 'Hey Jarvis' for voice authentication...")
+                    auth_clip_path = _save_auth_clip(rolling_buffer)
 
-                # Drop any stale queued command(s) so JARVIS always
-                # responds to what you just said, not a growing
-                # backlog from earlier in the conversation.
-                while not state.command_queue.empty():
-                    try:
-                        state.command_queue.get_nowait()
-                    except Exception:
-                        break
+                    while not state.auth_queue.empty():
+                        try:
+                            state.auth_queue.get_nowait()
+                        except Exception:
+                            break
 
-                state.command_queue.put(command_path)
-                queue_depth = state.command_queue.qsize()
-                if queue_depth > 0:
-                    print(f"[AudioStream] Command queued ({queue_depth} pending) -- JARVIS is still catching up.")
+                    state.auth_queue.put(auth_clip_path)
+
+                else:
+                    set_status("listening")  # wake word heard, now recording
+
+                    command_path = _capture_command(stream)
+
+                    # Drop any stale queued command(s) so JARVIS always
+                    # responds to what you just said, not a growing
+                    # backlog from earlier in the conversation.
+                    while not state.command_queue.empty():
+                        try:
+                            state.command_queue.get_nowait()
+                        except Exception:
+                            break
+
+                    state.command_queue.put(command_path)
+                    queue_depth = state.command_queue.qsize()
+                    if queue_depth > 0:
+                        print(f"[AudioStream] Command queued ({queue_depth} pending) -- JARVIS is still catching up.")
 
                 for _ in range(WARMUP_CHUNKS):
                     warm_chunk, _ = stream.read(CHUNK_SIZE)
+                    rolling_buffer.append(warm_chunk.copy())
                     model.predict(warm_chunk.flatten())
 
                 print("[AudioStream] Listening for 'Hey Jarvis'...")

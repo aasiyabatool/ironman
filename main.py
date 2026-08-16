@@ -65,13 +65,13 @@ def authenticate_session(state: SharedState) -> bool:
     does not also execute "turn on the lights" as a side effect.
     """
     set_status("listening")
-    prompt = "Awaiting voice authentication. Say Hey Jarvis to authenticate."
+    prompt = "Awaiting voice authentication. Say only Hey Jarvis, nothing else, to authenticate."
     print(f"JARVIS: {prompt}")
     audio_reply = synthesize(prompt, unique_response_path(RESPONSES_DIR))
     play_interruptible(audio_reply, state)
 
-    print("[Main] Waiting for wake word + speech to authenticate...")
-    audio_path = state.command_queue.get()  # blocks until wake word + clip arrive
+    print("[Main] Waiting for 'Hey Jarvis' to authenticate (say nothing else)...")
+    audio_path = state.auth_queue.get()  # blocks until the wake-word clip arrives
     state.interrupt_requested.clear()
 
     authorized, matched_name, similarity = is_authorized(
@@ -89,6 +89,9 @@ def authenticate_session(state: SharedState) -> bool:
         log_interaction("[auth clip]", "AUTH_SUCCESS", greeting)
         audio_reply = synthesize(greeting, unique_response_path(RESPONSES_DIR))
         play_interruptible(audio_reply, state)
+        # Hand control back to normal command capture -- from here on,
+        # wake words trigger trailing-speech recording as usual.
+        state.auth_mode.clear()
         set_status("ready")
         return True
 
@@ -163,6 +166,10 @@ def main() -> None:
             state.shutdown_requested.set()
             return
     else:
+        # No auth stage to clear auth_mode for us -- clear it now so
+        # the audio thread treats every wake word as a normal command
+        # capture instead of waiting for an auth clip forever.
+        state.auth_mode.clear()
         print("[Main] Voice authentication DISABLED (set VOICE_AUTH_ENABLED=true to turn on).\n")
 
     try:
